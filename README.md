@@ -1,2 +1,2 @@
 # easyMed-FastApi
-Minha primeira Aplicação Utilizando o Framework FastApi (Python3)
+Minha primeira Aplicação Utilizando o Framework FastApi (Python3)!
