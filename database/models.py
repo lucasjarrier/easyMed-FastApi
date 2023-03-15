@@ -7,7 +7,7 @@ class User(Base):
     __tablename__ = 'user'
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String)
-    medications = relationship('Medication', backref='user')
+    medications = relationship('Medication', backref='user', lazy='subquery')
 
 
 class Medication(Base):
