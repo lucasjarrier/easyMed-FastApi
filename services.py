@@ -1,8 +1,10 @@
 from database.models import User, Medication
-from database.connection import async_session
+from database.routers.connection import async_session
 from sqlalchemy import delete, select
 from fastapi import HTTPException
 from exceptions import InvalidUserIdException, InvalidMedicationNameException
+from providers.hash_provider import generate_hash, verify_hash
+from providers.token_provider import create_acess_token, verify_acess_token
 import re
 
 class UserService:
@@ -14,9 +16,10 @@ class UserService:
             if result.rowcount == 0:
                 raise HTTPException(status_code=404, detail='Usuário não encontrado')
 
-    async def create_user(name):
+    async def create_user(name, email, password):
         async with async_session() as session:
-            session.add(User(name=name))
+            password_cript = generate_hash(password)
+            session.add(User(name=name, password=password_cript, email=email))
             await session.commit()
 
     async def list_user(self):
@@ -24,7 +27,48 @@ class UserService:
             query = select(User)
             result = await session.execute(query)
             return result.scalars().all()
+    
+    async def get_user_by_id(self, user_id: int):
+        async with async_session() as session:
+            query = select(User).where(User.id == user_id)
+            result = await session.execute(query)
+            return result.scalar()
+    
+    async def edit_user(self, user_id: int, user_name: str):
+        async with async_session() as session:
+            # Verifica se o usuário existe.
+            user = await session.get(User, user_id)
+            if not user:
+                raise HTTPException(status_code=404, detail=f"Usuário {user_id} não encontrado!")
+            
+            user.name = user_name
+            await session.commit()
+    
+    async def user_login(self, email: str, password: str):
+        async with async_session():
+            
+            user = await self.get_user_by_email(email)
+            if not user:
+                raise InvalidUserIdException(f"Nenhum Email: {email} cadastrado.")
+            
+            validPassword = verify_hash(password, user.password)
+            
+            if  not validPassword:
+                raise InvalidUserIdException(f"Senha Incorreta!")
+            
+            return await self.create_jwt(user)
+        
+    async def create_jwt(self, user: User):
+        async with async_session():
+            token = create_acess_token({'sub': user.email})
+            return {'User': user, 'acess_token': token}
 
+    async def get_user_by_email(self, user_email: str) -> User:
+        async with async_session() as session:
+            query = select(User).where(User.email==user_email)
+            result = await session.execute(query)
+            return result.scalars().first()
+    
 class MedicationService:
     async def add_medication(self, user_id: int, name: str):
         if not re.match(r'^[a-zA-Z0-9_-]+$', name):
