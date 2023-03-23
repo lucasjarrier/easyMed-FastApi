@@ -4,7 +4,7 @@ from sqlalchemy import delete, select
 from fastapi import HTTPException
 from exceptions import InvalidUserIdException, InvalidMedicationNameException
 from providers.hash_provider import generate_hash, verify_hash
-from providers.token_provider import create_acess_token, verify_acess_token
+from providers.token_provider import create_acess_token
 import re
 
 class UserService:
@@ -61,7 +61,7 @@ class UserService:
     async def create_jwt(self, user: User):
         async with async_session():
             token = create_acess_token({'sub': user.email})
-            return {'User': user, 'acess_token': token}
+            return {'acess_token': token, "token_type": "bearer"}
 
     async def get_user_by_email(self, user_email: str) -> User:
         async with async_session() as session:

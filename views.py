@@ -1,8 +1,9 @@
 from typing import List
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends, Form, HTTPException
 from schemas import *
 from services import UserService, MedicationService
-from database.routers.auth_utils import get_user_logged
+from database.models import User
+from database.routers.auth_utils import get_usuario_logado
 
 user_router = APIRouter(prefix='/user')
 assets_router = APIRouter(prefix='/assets')
@@ -34,11 +35,11 @@ async def user_list_all():
         raise HTTPException(400, detail="Ocorreu um erro ao tentar listar os usuários!")
     
 @user_router.get('/{user_id}', response_model=UserListOutput, responses={400: {'model': ErrorOutput}})
-async def get_user_by_id(user_id: int):
+async def get_user_by_id(user_id: int, user_logado: User = Depends(get_usuario_logado)):
     try:
         user_service = UserService()
         return await user_service.get_user_by_id(user_id)
-    except Exception as error:
+    except Exception:
         raise HTTPException(400, detail=f"Ocorreu um erro ao tentar listar o usuário: {user_id}")
 
 @user_router.put('/{user_id}', response_model=StandardOutput, responses={400: {'model': ErrorOutput}})
@@ -50,20 +51,13 @@ async def edit_user_by_id(user_id: int, user_input: UserCreateInput):
     except Exception as error:
         raise HTTPException(400, detail=str(error))
 
-# AUTH USER
-@user_router.post('/login', response_model=dict, responses={400: {'model': ErrorOutput}})
-async def login_user(user_login: UserLogin):
+@user_router.post('/login')
+async def login_user(username: str = Form(...), password: str = Form(...)):
     try:
         user_service = UserService()
-        return await user_service.user_login(user_login.email, user_login.password)
+        return await user_service.user_login(username, password)
     except Exception as error:
         raise HTTPException(400, detail=str(error))
-
-# TEST
-@user_router.get('/test', response_model=str, responses={400: {'model': ErrorOutput}})
-async def test_login(user: UserListOutput = Depends(get_user_logged)):
-    return "OLA"
-    return user
 
 @medication_router.post('/create', response_model=StandardOutput, responses={400: {'model': ErrorOutput}})
 async def medication_create(medication_input: MedicationCreateInput):
